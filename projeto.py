@@ -15,9 +15,9 @@ matplotlib.use('Agg')  # salva as figuras sem abrir janela (funciona no WSL)
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.metrics import (ConfusionMatrixDisplay, accuracy_score, classification_report,
-                             confusion_matrix, f1_score, make_scorer, recall_score)
-from sklearn.model_selection import ParameterGrid, StratifiedKFold, cross_validate, train_test_split
+from sklearn.metrics import (ConfusionMatrixDisplay, classification_report, confusion_matrix,
+                             get_scorer, make_scorer, recall_score)
+from sklearn.model_selection import StratifiedKFold, cross_validate, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler
@@ -30,8 +30,6 @@ PASTA_RESULTADOS = PASTA / 'resultados'
 PASTA_RESULTADOS.mkdir(exist_ok=True)
 
 SEED = 42
-PROPORCAO_TESTE = 0.2
-N_FOLDS = 10
 CAPACIDADE_EQUIPE = 20  # alunos atendidos por período
 
 
@@ -49,7 +47,7 @@ print(f'{dataset.shape[0]} alunos, {dataset.shape[1] - 1} features + coluna alvo
 print(dataset['Target'].value_counts().to_string(), '\n')
 
 # Condição de adequação: alunos com as mesmas features não podem ter desfechos diferentes
-features = [c for c in dataset.columns if c != 'Target']
+features = list(dataset.columns.drop('Target'))
 conflitos = (dataset.groupby(features)['Target'].nunique() > 1).sum()
 print(f'Condição de adequação: {conflitos} grupos de alunos com '
       'as mesmas features e desfechos diferentes\n')
@@ -59,35 +57,33 @@ print(f'Condição de adequação: {conflitos} grupos de alunos com '
 
 variavel_classificadora = dataset['Target']
 dataset = dataset.drop(columns=['Target'])
+colunas_binarias = list(dataset.columns[dataset.isin([0, 1]).all()])  # usadas no motivo (seção 7)
 
-# Categóricas codificadas como inteiros (ex.: Course = 9500); precisam de one-hot explícito
+# Categóricas vêm como inteiros (ex.: Course = 9500): sem columns=, o get_dummies não as converte
 COLUNAS_NOMINAIS = [
     'Marital status', 'Application mode', 'Course', 'Previous qualification', 'Nacionality',
     "Mother's qualification", "Father's qualification", "Mother's occupation", "Father's occupation",
 ]
-colunas_binarias = {c for c in dataset.columns
-                    if c not in COLUNAS_NOMINAIS and set(dataset[c].unique()) <= {0, 1}}
 dataset = pd.get_dummies(dataset, columns=COLUNAS_NOMINAIS)
-colunas_one_hot = {c for c in dataset.columns if c.rsplit('_', 1)[0] in COLUNAS_NOMINAIS}
 print(f'Após o one-hot encoding: {dataset.shape[1]} colunas\n')
 
-# Holdout estratificado; o teste também faz o papel dos alunos ativos (seção 7)
+# Holdout 80/20 estratificado; o teste também faz o papel dos alunos ativos (seção 7)
 x_train, x_test, y_train, y_test = train_test_split(
-    dataset, variavel_classificadora, test_size=PROPORCAO_TESTE, random_state=SEED,
+    dataset, variavel_classificadora, test_size=0.2, random_state=SEED,
     stratify=variavel_classificadora
 )
 
 
 ### 3. Treinando o modelo
 
-ARVORE = {
-    'criterion': 'entropy',   # ganho de informação
-    'max_depth': 6,           # evita overfitting
-    'min_samples_split': 10,  # mínimo de alunos para dividir um nó
-    'class_weight': None,
-}
-def criar_arvore(**ajustes):  # ajustes sobrescrevem parâmetros da ARVORE
-    return DecisionTreeClassifier(**{**ARVORE, **ajustes}, random_state=SEED)
+def criar_arvore(max_depth=6, class_weight=None):
+    return DecisionTreeClassifier(
+        criterion='entropy',        # ganho de informação
+        max_depth=max_depth,        # evita overfitting
+        min_samples_split=10,       # mínimo de alunos para dividir um nó
+        class_weight=class_weight,  # 'balanced' dá mais peso às classes menores
+        random_state=SEED,
+    )
 
 
 # Classes desbalanceadas: além da acurácia, F1 macro e recall de Dropout
@@ -96,11 +92,11 @@ METRICAS = {
     'f1_macro': 'f1_macro',
     'recall_dropout': make_scorer(recall_score, labels=['Dropout'], average='macro'),
 }
-kfold = StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED)
+kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=SEED)
 
 
 def avaliar_kfold(modelo, x, y):
-    """Média das métricas no k-fold; para a árvore, também a média de regras (folhas)."""
+    """Média das métricas nos 10 folds; para a árvore, também a média de regras (folhas)."""
     resultado = cross_validate(modelo, x, y, cv=kfold, scoring=METRICAS, n_jobs=-1,  # em paralelo
                                return_estimator=True)
     medias = {nome: resultado[f'test_{nome}'].mean() for nome in METRICAS}
@@ -109,32 +105,21 @@ def avaliar_kfold(modelo, x, y):
     return medias
 
 
-def buscar_hiperparametros(criar_modelo, grade, x, y):
-    """Tabela do k-fold para cada combinação da grade e a de maior F1 macro."""
-    combinacoes = list(ParameterGrid(grade))
-    tabela = pd.DataFrame([{**{k: str(v) for k, v in p.items()},  # str: mostra None, não NaN
-                            **avaliar_kfold(criar_modelo(**p), x, y)}
-                           for p in combinacoes])
-    return tabela, combinacoes[tabela['f1_macro'].idxmax()]
+def avaliar_teste(modelo):
+    return {nome: get_scorer(metrica)(modelo, x_test, y_test) for nome, metrica in METRICAS.items()}
 
 
-def linha_da_grade(tabela, parametros):
-    mascara = np.logical_and.reduce([tabela[k] == str(v) for k, v in parametros.items()])
-    return tabela[mascara].iloc[0]
-
-
-# Grade comparada com a configuração ARVORE
-GRADE_ARVORE = {'class_weight': [None, 'balanced'], 'max_depth': [3, 4, 5, 6, 8, 10, None]}
-
-print(f'=== 3. Árvore de decisão: k-fold ({N_FOLDS}) no conjunto de treino ===')
-tabela, melhor = buscar_hiperparametros(criar_arvore, GRADE_ARVORE, x_train, y_train)
-imprimir_tabela(tabela)
-usada = linha_da_grade(tabela, {k: ARVORE[k] for k in GRADE_ARVORE})
-maior_f1 = linha_da_grade(tabela, melhor)
-print(f'\nConfiguração usada: {ARVORE}')
-print(f'  k-fold: F1 macro {usada["f1_macro"]:.3f} com {usada["regras"]:.0f} regras em média')
-print(f'  Maior F1 macro da grade: {melhor} -> {maior_f1["f1_macro"]:.3f} '
-      f'com {maior_f1["regras"]:.0f} regras\n')
+# A configuração adotada (padrão de criar_arvore) comparada com outras profundidades
+print('=== 3. Árvore de decisão: k-fold (10) no conjunto de treino ===')
+grade = pd.DataFrame([
+    {'class_weight': str(class_weight), 'max_depth': str(max_depth),  # str: mostra None, não NaN
+     **avaliar_kfold(criar_arvore(max_depth, class_weight), x_train, y_train)}
+    for class_weight in [None, 'balanced'] for max_depth in [3, 4, 5, 6, 8, 10, None]
+])
+imprimir_tabela(grade)
+melhor = grade.loc[grade['f1_macro'].idxmax()]
+print(f'\nMaior F1 macro: class_weight={melhor["class_weight"]}, max_depth={melhor["max_depth"]} '
+      f'({melhor["f1_macro"]:.3f}, {melhor["regras"]:.0f} regras). Adotada: max_depth=6\n')
 
 
 ### 4. Resultados no conjunto de teste
@@ -144,21 +129,16 @@ model.fit(x_train, y_train)
 pred = model.predict(x_test)
 classes = list(model.classes_)
 
-print(f'=== 4. Árvore de decisão: resultado no teste (holdout {PROPORCAO_TESTE:.0%}) ===')
+print('=== 4. Árvore de decisão: resultado no teste (holdout 20%) ===')
 print(classification_report(y_test, pred, digits=3))
 print('Matriz de confusão (linhas = real, colunas = previsto):', classes)
 print(confusion_matrix(y_test, pred, labels=classes), '\n')
 
-# Cada folha é uma regra SE ... ENTÃO; cada nó no caminho até ela é um termo
-estrutura = model.tree_
-profundidade = np.zeros(estrutura.node_count, dtype=int)
-for no in range(estrutura.node_count):  # pai sempre tem id menor que o filho
-    for filho in (estrutura.children_left[no], estrutura.children_right[no]):
-        if filho != -1:
-            profundidade[filho] = profundidade[no] + 1
-termos_por_folha = profundidade[estrutura.children_left == -1]
-print(f'A árvore resume os {len(x_train)} alunos de treino em {len(termos_por_folha)} regras, '
-      f'com {termos_por_folha.sum()} termos ({termos_por_folha.mean():.1f} por regra em média)\n')
+# Cada folha é uma regra SE ... ENTÃO; os nós no caminho até ela são os termos
+folhas = model.tree_.children_left == -1
+termos = model.tree_.compute_node_depths()[folhas] - 1  # a raiz tem profundidade 1
+print(f'A árvore resume os {len(x_train)} alunos de treino em {folhas.sum()} regras, '
+      f'com {termos.sum()} termos ({termos.mean():.1f} por regra em média)\n')
 
 ConfusionMatrixDisplay.from_predictions(y_test, pred, labels=classes, cmap='Blues')
 plt.title('Matriz de confusão - árvore de decisão (teste)')
@@ -194,44 +174,32 @@ MOMENTOS = {
 }
 
 print('=== 5. Momentos de decisão (mesma configuração, k-fold no treino) ===')
-linhas = []
-for momento, ausentes in MOMENTOS.items():
-    x_momento = x_train.drop(columns=ausentes)
-    linhas.append({'momento': momento, 'features': x_momento.shape[1],
-                   **avaliar_kfold(criar_arvore(), x_momento, y_train)})
-imprimir_tabela(pd.DataFrame(linhas))
+imprimir_tabela(pd.DataFrame([
+    {'momento': momento, 'features': x_train.shape[1] - len(ausentes),
+     **avaliar_kfold(criar_arvore(), x_train.drop(columns=ausentes), y_train)}
+    for momento, ausentes in MOMENTOS.items()
+]))
 print()
 
 
 ### 6. Comparação com o KNN
 
-def criar_knn(n_neighbors=5):
+def criar_knn(k):
     # Normalização dentro do pipeline: o scaler é ajustado só no treino de cada fold
-    return make_pipeline(MinMaxScaler(), KNeighborsClassifier(n_neighbors=n_neighbors))
+    return make_pipeline(MinMaxScaler(), KNeighborsClassifier(n_neighbors=k))
 
 
-def avaliar_teste(y_real, y_previsto):
-    return {
-        'acuracia': accuracy_score(y_real, y_previsto),
-        'f1_macro': f1_score(y_real, y_previsto, average='macro'),
-        'recall_dropout': recall_score(y_real, y_previsto, labels=['Dropout'], average='macro'),
-    }
-
-
-print(f'=== 6. KNN: k-fold ({N_FOLDS}) no conjunto de treino ===')
-tabela_knn, melhor_knn = buscar_hiperparametros(criar_knn, {'n_neighbors': [5, 11, 21, 31, 51]},
-                                                x_train, y_train)
-imprimir_tabela(tabela_knn)
-
-k = melhor_knn['n_neighbors']
-knn = criar_knn(k)
-knn.fit(x_train, y_train)
-pred_knn = knn.predict(x_test)
+print('=== 6. KNN: k-fold (10) no conjunto de treino ===')
+grade_knn = pd.DataFrame([{'n_neighbors': k, **avaliar_kfold(criar_knn(k), x_train, y_train)}
+                          for k in [5, 11, 21, 31, 51]])
+imprimir_tabela(grade_knn)
+k = grade_knn.loc[grade_knn['f1_macro'].idxmax(), 'n_neighbors']
+knn = criar_knn(k).fit(x_train, y_train)
 
 print(f'\n=== 6. Árvore x KNN (k = {k}) no teste ===')
 imprimir_tabela(pd.DataFrame([
-    {'modelo': 'Árvore de decisão', **avaliar_teste(y_test, pred)},
-    {'modelo': f'KNN (k = {k})', **avaliar_teste(y_test, pred_knn)},
+    {'modelo': 'Árvore de decisão', **avaliar_teste(model)},
+    {'modelo': f'KNN (k = {k})', **avaliar_teste(knn)},
 ]))
 print()
 
@@ -260,8 +228,8 @@ def explicar_caminho(arvore, x):
 
 
 def descrever_condicao(coluna, inferior, superior):
-    if coluna in colunas_one_hot:  # Course_9500 -> "Course = 9500"
-        nome, codigo = coluna.rsplit('_', 1)
+    nome, _, codigo = coluna.rpartition('_')
+    if nome in COLUNAS_NOMINAIS:  # one-hot: Course_9500 -> "Course = 9500"
         return f'{nome} = {codigo}' if inferior is not None else f'{nome} ≠ {codigo}'
     if coluna in colunas_binarias:
         return f'{coluna} = {1 if inferior is not None else 0}'

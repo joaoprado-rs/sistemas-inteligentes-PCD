@@ -26,9 +26,7 @@ class_weight max_depth  acuracia  f1_macro  recall_dropout  regras
     balanced        10     0.694     0.653           0.688   192.5
     balanced      None     0.664     0.615           0.702   365.6
 
-Configuração usada: {'criterion': 'entropy', 'max_depth': 6, 'min_samples_split': 10, 'class_weight': None}
-  k-fold: F1 macro 0.667 com 51 regras em média
-  Maior F1 macro da grade: {'class_weight': None, 'max_depth': 8} -> 0.671 com 110 regras
+Maior F1 macro: class_weight=None, max_depth=8 (0.671, 110 regras). Adotada: max_depth=6
 
 === 4. Árvore de decisão: resultado no teste (holdout 20%) ===
               precision    recall  f1-score   support
@@ -55,12 +53,12 @@ Ingresso (matrícula)       235     0.625     0.490           0.577    43.0
   Fim do 2º semestre       247     0.747     0.667           0.701    51.4
 
 === 6. KNN: k-fold (10) no conjunto de treino ===
-n_neighbors  acuracia  f1_macro  recall_dropout
-          5     0.607     0.513           0.556
-         11     0.630     0.503           0.523
-         21     0.625     0.473           0.482
-         31     0.628     0.463           0.465
-         51     0.630     0.452           0.457
+ n_neighbors  acuracia  f1_macro  recall_dropout
+           5     0.607     0.513           0.556
+          11     0.630     0.503           0.523
+          21     0.625     0.473           0.482
+          31     0.628     0.463           0.465
+          51     0.630     0.452           0.457
 
 === 6. Árvore x KNN (k = 5) no teste ===
            modelo  acuracia  f1_macro  recall_dropout

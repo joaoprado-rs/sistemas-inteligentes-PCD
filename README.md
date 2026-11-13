@@ -29,7 +29,7 @@ O `projeto.py` segue as seções do artigo:
 | 6. Comparação com o KNN | mesmo k-fold, depois árvore x KNN no teste |
 | 7. Saída do sistema | lista priorizada com motivo e ação sugerida (`resultados/alertas.csv`) |
 
-Para testar outra configuração, basta mudar as constantes do `projeto.py` (`ARVORE`, `GRADE_ARVORE`, `CAPACIDADE_EQUIPE` etc.).
+Para testar outra configuração, basta mudar os padrões de `criar_arvore` (profundidade e `class_weight`), as listas da grade na seção 3 ou `CAPACIDADE_EQUIPE`, no `projeto.py`.
 
 ## Como rodar
 

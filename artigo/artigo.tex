@@ -275,17 +275,17 @@ deixar de alertar quem vai evadir é o erro mais custoso.
 COLUNAS_NOMINAIS = ['Marital status', 'Application mode', 'Course', ...]
 dataset = pd.get_dummies(dataset, columns=COLUNAS_NOMINAIS)
 x_train, x_test, y_train, y_test = train_test_split(
-    dataset, variavel_classificadora, test_size=PROPORCAO_TESTE, random_state=SEED,
+    dataset, variavel_classificadora, test_size=0.2, random_state=SEED,
     stratify=variavel_classificadora
 )
-ARVORE = {
-    'criterion': 'entropy',   # ganho de informação
-    'max_depth': 6,           # evita overfitting
-    'min_samples_split': 10,  # mínimo de alunos para dividir um nó
-    'class_weight': None,
-}
-def criar_arvore(**ajustes):  # ajustes sobrescrevem parâmetros da ARVORE
-    return DecisionTreeClassifier(**{**ARVORE, **ajustes}, random_state=SEED)
+def criar_arvore(max_depth=6, class_weight=None):
+    return DecisionTreeClassifier(
+        criterion='entropy',        # ganho de informação
+        max_depth=max_depth,        # evita overfitting
+        min_samples_split=10,       # mínimo de alunos para dividir um nó
+        class_weight=class_weight,  # 'balanced' dá mais peso às classes menores
+        random_state=SEED,
+    )
 \end{lstlisting}
 
 \begin{lstlisting}[basicstyle=\ttfamily\scriptsize, caption={Níveis de alerta e ação sugerida (trecho da seção 7 do \texttt{projeto.py}).}, label={cod:alertas}]
