@@ -1,0 +1,104 @@
+=== 1. Dados ===
+4424 alunos, 36 features + coluna alvo
+Target
+Graduate    2209
+Dropout     1421
+Enrolled     794 
+
+Condição de adequação: 0 grupos de alunos com as mesmas features e desfechos diferentes
+
+Após o one-hot encoding: 247 colunas
+
+=== 3. Árvore de decisão: k-fold (10) no conjunto de treino ===
+class_weight max_depth  acuracia  f1_macro  recall_dropout  regras
+        None         3     0.728     0.612           0.703     8.0
+        None         4     0.737     0.660           0.662    16.0
+        None         5     0.738     0.646           0.683    31.0
+        None         6     0.747     0.667           0.701    51.4
+        None         8     0.743     0.671           0.704   110.2
+        None        10     0.727     0.657           0.713   180.0
+        None      None     0.697     0.633           0.715   342.0
+    balanced         3     0.667     0.644           0.683     8.0
+    balanced         4     0.680     0.657           0.656    16.0
+    balanced         5     0.678     0.659           0.676    31.7
+    balanced         6     0.695     0.669           0.683    54.7
+    balanced         8     0.695     0.661           0.671   118.8
+    balanced        10     0.694     0.653           0.688   192.5
+    balanced      None     0.664     0.615           0.702   365.6
+
+Configuração usada: {'criterion': 'entropy', 'max_depth': 6, 'min_samples_split': 10, 'class_weight': None}
+  k-fold: F1 macro 0.667 com 51 regras em média
+  Maior F1 macro da grade: {'class_weight': None, 'max_depth': 8} -> 0.671 com 110 regras
+
+=== 4. Árvore de decisão: resultado no teste (holdout 20%) ===
+              precision    recall  f1-score   support
+
+     Dropout      0.797     0.704     0.748       284
+    Enrolled      0.485     0.415     0.447       159
+    Graduate      0.795     0.896     0.843       442
+
+    accuracy                          0.748       885
+   macro avg      0.692     0.672     0.679       885
+weighted avg      0.740     0.748     0.741       885
+
+Matriz de confusão (linhas = real, colunas = previsto): ['Dropout', 'Enrolled', 'Graduate']
+[[200  37  47]
+ [ 38  66  55]
+ [ 13  33 396]] 
+
+A árvore resume os 3539 alunos de treino em 50 regras, com 287 termos (5.7 por regra em média)
+
+=== 5. Momentos de decisão (mesma configuração, k-fold no treino) ===
+             momento  features  acuracia  f1_macro  recall_dropout  regras
+Ingresso (matrícula)       235     0.625     0.490           0.577    43.0
+  Fim do 1º semestre       241     0.715     0.597           0.717    52.4
+  Fim do 2º semestre       247     0.747     0.667           0.701    51.4
+
+=== 6. KNN: k-fold (10) no conjunto de treino ===
+n_neighbors  acuracia  f1_macro  recall_dropout
+          5     0.607     0.513           0.556
+         11     0.630     0.503           0.523
+         21     0.625     0.473           0.482
+         31     0.628     0.463           0.465
+         51     0.630     0.452           0.457
+
+=== 6. Árvore x KNN (k = 5) no teste ===
+           modelo  acuracia  f1_macro  recall_dropout
+Árvore de decisão     0.748     0.679           0.704
+      KNN (k = 5)     0.591     0.506           0.514
+
+=== 7. Saída do sistema (simulação com os alunos do teste) ===
+nivel
+Sem alerta                   498
+Alto (risco de evasão)       251
+Médio (risco de retenção)    136
+
+Dos 20 alunos que a equipe atenderia primeiro, 18 de fato evadiram.
+ prioridade  aluno  prob_evasao                  nivel                                                                                   acao_sugerida
+          1    723          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+          2    482          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+          3   2018          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+          4   4312          1.0 Alto (risco de evasão) encaminhar à assistência estudantil (situação financeira); oferecer monitoria/tutoria acadêmica
+          5   3321          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+          6    600          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+          7   1538          1.0 Alto (risco de evasão) encaminhar à assistência estudantil (situação financeira); oferecer monitoria/tutoria acadêmica
+          8   2939          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+          9    917          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+         10   2294          1.0 Alto (risco de evasão) encaminhar à assistência estudantil (situação financeira); oferecer monitoria/tutoria acadêmica
+         11   3947          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+         12   2191          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+         13   4077          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+         14    597          1.0 Alto (risco de evasão) encaminhar à assistência estudantil (situação financeira); oferecer monitoria/tutoria acadêmica
+         15   1728          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+         16   3089          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+         17   3719          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+         18   4034          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+         19   2209          1.0 Alto (risco de evasão)                                                            oferecer monitoria/tutoria acadêmica
+         20   1820          1.0 Alto (risco de evasão) encaminhar à assistência estudantil (situação financeira); oferecer monitoria/tutoria acadêmica
+
+Motivo dos 3 primeiros alertas:
+  Aluno 723: Curricular units 2nd sem (approved) ≤ 1.5 e Curricular units 1st sem (enrolled) > 0.5 e Curricular units 2nd sem (evaluations) ≤ 3.5 e Marital status ≠ 3
+  Aluno 482: Curricular units 2nd sem (approved) ≤ 1.5 e Curricular units 1st sem (enrolled) > 0.5 e Curricular units 2nd sem (evaluations) ≤ 3.5 e Marital status ≠ 3
+  Aluno 2018: 4.5 < Curricular units 2nd sem (approved) ≤ 5.5 e Tuition fees up to date = 1 e Curricular units 2nd sem (evaluations) ≤ 6.5 e Course = 9254
+
+Lista completa salva em resultados/alertas.csv

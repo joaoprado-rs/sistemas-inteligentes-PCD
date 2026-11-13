@@ -22,6 +22,7 @@
 \graphicspath{{figuras/}{../resultados/}}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
+\usetikzlibrary{positioning,arrows.meta,fit}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{hyperref}
@@ -39,7 +40,9 @@
   literate={á}{{\'a}}1 {à}{{\`a}}1 {ã}{{\~a}}1 {â}{{\^a}}1 {é}{{\'e}}1 {ê}{{\^e}}1
            {í}{{\'i}}1 {ó}{{\'o}}1 {õ}{{\~o}}1 {ô}{{\^o}}1 {ú}{{\'u}}1 {ç}{{\c c}}1
            {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1 {Ç}{{\c C}}1
-           {º}{{\textordmasculine}}1 {ª}{{\textordfeminine}}1,
+           {º}{{\textordmasculine}}1 {ª}{{\textordfeminine}}1
+           {Ã}{{\~A}}1 {Õ}{{\~O}}1 {Â}{{\^A}}1 {Ê}{{\^E}}1 {Ô}{{\^O}}1 {À}{{\`A}}1
+           {≤}{{$\le$}}1 {≠}{{$\ne$}}1,
 }
 \AtBeginDocument{\renewcommand{\thelstlisting}{\arabic{lstlisting}}} % Código 1, 2, 3...
 %
@@ -48,189 +51,453 @@
 \renewcommand\orcidID[1]{\unskip\textsuperscript{[#1]}}
 %
 % ---------------------------------------------------------------------------
-% Para escrever em português, descomente o bloco abaixo. Ele troca os rótulos
-% (Resumo, Palavras-chave, Tabela, Referências, Agradecimentos...) e ativa a
-% hifenização em português. O template original está em inglês.
+% Bloco de português: troca os rótulos (Resumo, Palavras-chave, Tabela,
+% Referências, Agradecimentos...) e ativa a hifenização em português.
 % ---------------------------------------------------------------------------
-%\usepackage[brazilian]{babel}
-%\addto\captionsbrazilian{%
-%  \def\abstractname{Resumo.}%
-%  \def\keywordname{{\bfseries Palavras-chave:}}%
-%  \def\ackname{Agradecimentos.}%
-%  \def\discintname{Declaração de interesses.}%
-%  \def\figurename{Fig.}%
-%  \def\tablename{Tabela}%
-%  \def\lstlistingname{Código}%
-%}
-%\def\andname{e}\def\lastandname{\unskip{} e} % "A, B e C" na lista de autores
+\usepackage[brazilian]{babel}
+\addto\captionsbrazilian{%
+  \def\abstractname{Resumo.}%
+  \def\keywordname{{\bfseries Palavras-chave:}}%
+  \def\ackname{Agradecimentos.}%
+  \def\discintname{Declaração de interesses.}%
+  \def\figurename{Fig.}%
+  \def\tablename{Tabela}%
+  \def\lstlistingname{Código}%
+}
+\def\andname{e}\def\lastandname{\unskip{} e} % "A, B e C" na lista de autores
 %
 \begin{document}
 %
-\title{Contribution Title}
+\title{Sistema de Alerta Precoce de Evasão no Ensino Superior com Árvore de Decisão}
 %
 % Título abreviado para o cabeçalho das páginas ímpares
-\titlerunning{Contribution Title (shortened if too long)}
+\titlerunning{Sistema de Alerta Precoce de Evasão}
 %
 \author{João Pedro de Souza Prado (RA 11202130110) \and
 Rafael Costoya (RA 11202320453) \and
 Gustavo Prado Quinello (RA 11202421059)}
 %
 % Autores abreviados para o cabeçalho das páginas pares
-\authorrunning{J. P. S. Prado et al.}
+\authorrunning{J. P. S. Prado, R. Costoya e G. P. Quinello}
 %
-\institute{Fundação Universidade Federal do ABC}
+\institute{Universidade Federal do ABC (UFABC)\\
+Novembro de 2026}
 %
 \maketitle
 \setcounter{footnote}{0} % notas de rodapé do texto começam em 1
 %
 \begin{abstract}
-The abstract should summarize the contents of the paper in short terms,
-i.e. 15--250 words.
+Identificar cedo os alunos em risco de evasão permite intervir enquanto ainda há
+tempo. Este trabalho idealiza um Sistema de Alerta Precoce de Evasão que, ao fim de cada
+período letivo, observa os dados dos alunos ativos de uma instituição de ensino
+superior, estima com uma árvore de decisão o desfecho de cada um (evasão, retenção ou
+formatura), explica o alerta pelo caminho na árvore e entrega à coordenação uma lista
+priorizada com uma ação sugerida. Os dados do sistema são representados pelo dataset
+\emph{Predict Students' Dropout and Academic Success} (4424 alunos, 36 variáveis). A
+árvore foi configurada com validação cruzada de 10 folds e comparada ao KNN. No teste,
+obteve acurácia de 0,748, F1 macro de 0,679 e recall de 0,704 na classe evasão, contra
+0,591, 0,506 e 0,514 do KNN. Na simulação, 18 dos 20 primeiros alunos priorizados de
+fato evadiram.
 
-\keywords{First Keyword, Second Keyword, Third Keyword.}
+\keywords{Evasão estudantil, Sistemas inteligentes, Apoio à decisão, Árvore de decisão.}
 \end{abstract}
 %
-\section{Introduction}
-\subsection{A Subsection Sample}
-Please note that the first paragraph of a section or subsection is not
-indented. The first paragraphs that follows a table, figure, equation etc.
-does not have an indent, either.
+\section{Introdução}
 
-Subsequent paragraphs, however, are indented.
+A evasão na graduação é uma perda para o aluno, que interrompe sua formação, e para a
+instituição, que investiu em uma vaga que não chega ao fim. Muitos fatores associados a
+ela, como o desempenho nas disciplinas e a situação financeira, já estão nos sistemas
+das instituições de ensino superior (IES), mas costumam ser analisados só depois que o
+aluno sai. Quanto antes o risco é identificado, maior a chance de uma intervenção fazer
+efeito. Mas um classificador sozinho não basta: com capacidade limitada, a equipe de
+permanência precisa saber quem atender primeiro, por que o aluno está em risco e o que
+fazer.
 
-\subsubsection{Sample Heading (Third Level).} Only two levels of headings
-should be numbered. Lower level headings remain unnumbered; they are
-formatted as run-in headings.
+O objetivo deste trabalho é propor um sistema inteligente de apoio à decisão para a
+permanência estudantil, tratado como um produto: o modelo de aprendizado de máquina é uma peça de um ciclo que observa os dados a cada período, avalia e explica o
+risco, sugere e prioriza ações conforme a capacidade da equipe e aprende com os
+desfechos. As contribuições são a especificação do sistema segundo os critérios e as
+funções básicas de um sistema inteligente~\cite{molina2020}, a comparação entre árvore
+de decisão e KNN, a análise de três momentos de decisão e a simulação da saída do
+sistema.
 
-\paragraph{Sample Heading (Forth Level).} The contribution should contain
-no more than four levels of headings. The following Table~\ref{tab1} gives
-a summary of all heading levels.
+\section{Trabalhos relacionados}
 
-\begin{table}
-\caption{Table captions should be placed above the tables.}\label{tab1}
+Realinho et al.~\cite{realinho2022} descrevem o dataset usado aqui, montado pelo
+Instituto Politécnico de Portalegre (Portugal) a partir de várias bases internas, com o
+que se sabe na matrícula e o desempenho ao fim do 1º e do 2º semestres. Ele fez parte
+de uma ferramenta de \emph{learning analytics} que entrega à equipe de tutoria uma
+estimativa do risco de evasão. Martins et al.~\cite{martins2021} apresentam um estudo de
+caso de previsão precoce do desempenho na mesma instituição. Para a visão de sistema,
+seguimos Molina~\cite{molina2020}: um sistema é inteligente quando
+(1) usa métodos de IA; (2) opera como agente, que observa o ambiente e age para atingir
+objetivos; e (3) replica capacidades cognitivas, como aprender, isto é, melhorar o
+desempenho $P$ em uma tarefa $T$ com a experiência $E$.
+
+\section{Visão do sistema}
+
+O Sistema de Alerta Precoce de Evasão é um agente de apoio à decisão, como o exemplo
+de Molina~\cite{molina2020} de um sistema que monitora uma frota de ônibus, detecta
+incidentes e recomenda ações a um operador, que decide e age. O sistema global tem três
+componentes (Fig.~\ref{fig:sistema}): o \textbf{usuário} (coordenação de curso ou setor
+de permanência estudantil); o \textbf{ambiente} (a IES, com seus alunos, disciplinas,
+notas, situação financeira e contexto econômico); e o \textbf{sistema}, que observa o
+ambiente e responde ao usuário. Quem age sobre o ambiente é o usuário.
+
+\begin{figure}[t]
 \centering
-\renewcommand{\arraystretch}{1.15}
-% Largura total do texto, colunas na mesma proporção do Word (1/4, 1/2, 1/4)
-\begin{tabularx}{\textwidth}{p{0.2\textwidth}Xp{0.215\textwidth}}
-\toprule[1.5pt]
-Heading level & Example & Font size and style\\
-\midrule[0.75pt]
-Title (centered) & {\Large\bfseries Lecture Notes} & 14 point, bold\\
-1\textsuperscript{st}-level heading & {\large\bfseries 1 Introduction} & 12 point, bold\\
-2\textsuperscript{nd}-level heading & {\bfseries 2.1 Printing Area} & 10 point, bold\\
-3\textsuperscript{rd}-level heading & {\bfseries Run-in Heading in Bold.} Text follows & 10 point, bold\\
-4\textsuperscript{th}-level heading & {\itshape Lowest Level Heading.} Text follows & 10 point, italic\\
-\bottomrule[1.5pt]
+\begin{tikzpicture}[
+  font=\scriptsize, node distance=1.6mm,
+  execute at begin node={\hyphenpenalty=10000},
+  seta/.style={-{Stealth[length=1.8mm]}, thick},
+  comp/.style={draw, fill=black!6, align=center, text width=3.1cm, inner sep=2pt},
+  rot/.style={align=center, text width=1.9cm},
+]
+\node[comp] (perc) {\textbf{Percepção}: dados do período};
+\node[comp, below=of perc] (aval) {\textbf{Avaliação}: árvore de decisão (classe e probabilidade)};
+\node[comp, below=of aval] (diag) {\textbf{Diagnóstico}: caminho do aluno na árvore};
+\node[comp, below=of diag] (dec) {\textbf{Decisão}: regras da equipe e prioridade};
+\node[comp, below=of dec] (mem) {\textbf{Memória}: intervenções e desfechos (retreino)};
+\foreach \a/\b in {perc/aval, aval/diag, diag/dec}
+  \draw[-{Stealth[length=1.2mm]}] (\a) -- (\b);
+\node[draw, very thick, rounded corners, inner sep=4pt,
+      fit={(perc)(mem)([xshift=4mm]aval.east)}] (sis) {};
+\node[above=0pt of sis, font=\footnotesize\bfseries] {Sistema de Alerta Precoce};
+\draw[-{Stealth[length=1.2mm]}, dashed] (mem.east) -- ++(2mm,0) |- (aval.east);
+%
+\node[rot, left=1.8cm of sis] (usutxt) {\textbf{Usuário}\\[1pt]coordenação de curso ou permanência estudantil};
+\node[draw, thick, rounded corners, inner sep=2pt,
+      fit=(usutxt)(usutxt.center |- sis.north)(usutxt.center |- sis.south)] (usu) {};
+\node[rot, right=1.8cm of sis] (ambtxt) {\textbf{Ambiente}\\[1pt]IES: alunos, disciplinas, notas, finanças, economia};
+\node[draw, thick, rounded corners, inner sep=2pt,
+      fit=(ambtxt)(ambtxt.center |- sis.north)(ambtxt.center |- sis.south)] (amb) {};
+%
+\draw[seta] (usu.east |- aval) -- node[above]{pede} (sis.west |- aval);
+\draw[seta] (sis.west |- dec) -- node[above, align=center]{responde:\\lista de alertas} (usu.east |- dec);
+\draw[seta] (amb.west |- perc) -- node[above, align=center]{observa\\(fim do período)} (sis.east |- perc);
+\draw[seta, dashed] (amb.west |- mem) -- node[above]{registra} (sis.east |- mem);
+\draw[seta] (usu.south) -- ++(0,-3mm) -| node[pos=0.25, below]
+  {age: monitoria, assistência estudantil, conversa} (amb.south);
+\end{tikzpicture}
+\caption{Visão sistêmica: o sistema observa o ambiente e responde ao usuário, que age
+sobre o ambiente. Intervenções e desfechos alimentam o retreino (tracejado).}\label{fig:sistema}
+\end{figure}
+
+O ciclo se repete a cada fim de período letivo (Tabela~\ref{tab:funcoes}): o sistema
+avalia os alunos ativos, explica e prioriza os alertas com regras da equipe
+(conhecimento especialista) e a coordenação decide e age. Intervenções e desfechos
+alimentam o retreino, e, como as intervenções mudam os dados do período seguinte, o
+ciclo se fecha.
+
+\begin{table}[t]
+\caption{Funções básicas de um sistema inteligente~\cite{molina2020} no sistema
+proposto.}\label{tab:funcoes}
+\centering\footnotesize
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+Função & No Sistema de Alerta Precoce de Evasão\\
+\midrule
+Perceber o ambiente & coleta, ao fim do período, os dados dos alunos ativos\\
+Avaliar a situação & estima classe e probabilidade com a árvore; o caminho na árvore é o motivo\\
+Decidir ações & sugere a ação por regras da equipe e prioriza pela probabilidade de evasão\\
+Executar ações & entrega a lista à coordenação, que decide e intervém no ambiente\\
+Memória & registra intervenções e desfechos; o modelo é retreinado a cada período\\
+\bottomrule
 \end{tabularx}
 \end{table}
 
-\noindent Displayed equations are centered and set on a separate line.
-\begin{equation}
-x + y = z
-\end{equation}
-Please try to avoid rasterized images for line-art diagrams and schemas.
-Whenever possible, use vector graphics instead (see Fig.~\ref{fig1}).
+As classes viram níveis de alerta: \texttt{Dropout} gera alerta alto; \texttt{Enrolled}
+(aluno ainda matriculado ao fim da duração normal do curso~\cite{realinho2022}) gera
+alerta médio, de retenção; \texttt{Graduate} não gera alerta. Na arquitetura, a
+\emph{construção do modelo} combina o histórico de alunos com desfecho conhecido e o
+conhecimento especialista das regras de ação; a \emph{inferência} ocorre a cada período
+e devolve a lista priorizada. Os três critérios de Molina são atendidos: o sistema usa
+IA, opera como agente que observa a IES e age por meio das recomendações, e é
+retreinado com a experiência $E$ (novos períodos com desfechos) para que o desempenho
+$P$ (recall de evasão) na tarefa $T$ (identificar alunos em risco) possa melhorar.
 
-\begin{figure}
+\section{Dados}
+
+Os dados que o sistema observa são os que os sistemas acadêmicos e financeiros de uma
+IES já geram. Como instância real, usamos o dataset \emph{Predict Students' Dropout and
+Academic Success}~\cite{uci_dataset}, montado pela própria instituição a partir de suas
+bases internas~\cite{realinho2022}: 4424 alunos e 36 variáveis, sem valores faltantes
+(Tabela~\ref{tab:dados}). A classe alvo \texttt{Target} tem três valores:
+\texttt{Graduate} (2209 alunos; 49,9\%), \texttt{Dropout} (1421; 32,1\%) e
+\texttt{Enrolled} (794; 17,9\%). Nenhum par de alunos tem as mesmas variáveis com
+desfechos diferentes, ou seja, o conjunto é consistente. As 9 variáveis nominais vêm
+codificadas como inteiros (ex.: \texttt{Course = 9254}); tratadas como números, levariam
+a árvore a criar divisões sem sentido, como \texttt{Course} $\le 9254$. Por isso são
+convertidas com \emph{one-hot encoding}, o que leva a 247 colunas.
+
+\begin{table}[t]
+\caption{Grupos de variáveis do dataset (nom.\ = nominal, bin.\ = binária, int.\ =
+inteira, cont.\ = contínua).}\label{tab:dados}
+\centering\scriptsize
+\begin{tabularx}{\textwidth}{@{}lcX@{}}
+\toprule
+Grupo & Nº & Exemplos (tipo)\\
+\midrule
+Demográficas & 7 & estado civil, nacionalidade (nom.); gênero (bin.); idade na matrícula (int.)\\
+Socioeconômicas & 7 & qualificação e ocupação dos pais (nom.); bolsista, devedor,
+  mensalidades em dia (bin.)\\
+Acadêmicas na matrícula & 7 & curso, modo de ingresso (nom.); turno (bin.); nota de admissão (cont.)\\
+Acadêmicas no 1º e 2º sem. & 12 & por semestre: disciplinas creditadas, inscritas,
+  avaliadas, aprovadas, sem avaliação (int.); média das notas (cont.)\\
+Macroeconômicas & 3 & taxa de desemprego, inflação, PIB (cont.)\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Metodologia}
+
+Após a concepção do sistema (Seção~3) e a escolha dos dados que o representam
+(Seção~4), o experimento foi implementado em Python com scikit-learn~\cite{sklearn}, em
+cinco etapas (Códigos~\ref{cod:preparacao} e~\ref{cod:alertas}). (1)~\textbf{Preparação}:
+\emph{one-hot} das colunas nominais e \emph{holdout} estratificado, com 80\% para treino
+(3539 alunos) e 20\% para teste (885).
+% TODO: se quiserem dizer que 80/20 é a proporção usada pelos autores do dataset, confirmar a fonte antes.
+(2)~\textbf{Árvore}: critério de entropia (ganho de informação), mínimo de 10 alunos
+para dividir um nó e profundidade limitada para evitar \emph{overfitting}. Com validação
+cruzada estratificada de 10 folds no treino, foram comparadas as profundidades
+(\texttt{max\_depth}) 3, 4, 5, 6, 8, 10 e sem limite, com e sem
+\texttt{class\_weight = balanced}. (3)~\textbf{KNN}: $k$ = 5, 11, 21, 31 e 51, com as
+variáveis normalizadas por \texttt{MinMaxScaler}
+dentro de um \emph{pipeline}, para que o ajuste use só o treino de cada fold.
+(4)~\textbf{Momentos de decisão}: a mesma árvore, só com as variáveis disponíveis no
+ingresso, no fim do 1º e no fim do 2º semestre. (5)~\textbf{Simulação}: os 885 alunos
+de teste fazem o papel dos alunos ativos, com capacidade de 20 atendimentos por período.
+Como as classes são desbalanceadas, a acurácia não basta: os critérios principais são o
+F1 macro, que dá o mesmo peso às três classes, e o recall de \texttt{Dropout}, pois
+deixar de alertar quem vai evadir é o erro mais custoso.
+
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, caption={Preparação dos dados e criação da árvore (trechos das seções 2 e 3 do \texttt{projeto.py}).}, label={cod:preparacao}]
+COLUNAS_NOMINAIS = ['Marital status', 'Application mode', 'Course', ...]
+dataset = pd.get_dummies(dataset, columns=COLUNAS_NOMINAIS)
+x_train, x_test, y_train, y_test = train_test_split(
+    dataset, variavel_classificadora, test_size=PROPORCAO_TESTE, random_state=SEED,
+    stratify=variavel_classificadora
+)
+ARVORE = {
+    'criterion': 'entropy',   # ganho de informação
+    'max_depth': 6,           # evita overfitting
+    'min_samples_split': 10,  # mínimo de alunos para dividir um nó
+    'class_weight': None,
+}
+def criar_arvore(**ajustes):  # ajustes sobrescrevem parâmetros da ARVORE
+    return DecisionTreeClassifier(**{**ARVORE, **ajustes}, random_state=SEED)
+\end{lstlisting}
+
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, caption={Níveis de alerta e ação sugerida (trecho da seção 7 do \texttt{projeto.py}).}, label={cod:alertas}]
+alertas['nivel'] = np.select(
+    [alertas['previsao'] == 'Dropout', alertas['previsao'] == 'Enrolled'],
+    ['Alto (risco de evasão)', 'Médio (risco de retenção)'], default='Sem alerta'
+)
+alertas['acao_sugerida'] = [sugerir_acao(n, l) for n, l in zip(alertas['nivel'], caminhos)]
+\end{lstlisting}
+
+\section{Resultados}
+
+A Tabela~\ref{tab:comparacao} reúne a validação cruzada e o teste (grade completa no
+Apêndice~\ref{ap:tabelas}). Sem limite de profundidade, a árvore chega a 342 regras
+(folhas) e o F1 macro cai para 0,633, sinal de \emph{overfitting}. O maior F1 macro foi o
+da profundidade 8 (0,671), mas a profundidade 6 ficou a 0,004 dele com menos da metade
+das regras (51,4 contra 110,2) e foi a adotada, por gerar motivos mais curtos.
+% TODO: o grupo deve confirmar a escolha entre profundidade 6 (adotada no projeto.py) e 8 (maior F1 macro no k-fold).
+A árvore supera o KNN em todas as métricas.
+
+\begin{table}[t]
+\caption{Comparação das soluções (Acur.\ = acurácia; Rec.\ = recall de
+\texttt{Dropout}).}\label{tab:comparacao}
+\centering\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+& \multicolumn{3}{c}{k-fold (treino)} & \multicolumn{3}{c}{Teste}\\
+\cmidrule(lr){2-4}\cmidrule(l){5-7}
+Solução & Acur. & F1 macro & Rec. & Acur. & F1 macro & Rec.\\
+\midrule
+\multicolumn{7}{@{}l}{\emph{Árvore, fim do 2º semestre (247 variáveis)}}\\
+\quad\textbf{profundidade 6 (adotada)} & \textbf{0,747} & \textbf{0,667} & \textbf{0,701}
+  & \textbf{0,748} & \textbf{0,679} & \textbf{0,704}\\
+\quad profundidade 8 & 0,743 & 0,671 & 0,704 & -- & -- & --\\
+\quad sem limite de profundidade & 0,697 & 0,633 & 0,715 & -- & -- & --\\
+\quad profundidade 6, \texttt{balanced} & 0,695 & 0,669 & 0,683 & -- & -- & --\\
+\multicolumn{7}{@{}l}{\emph{Árvore com profundidade 6, momentos anteriores}}\\
+\quad ingresso (235 variáveis) & 0,625 & 0,490 & 0,577 & -- & -- & --\\
+\quad fim do 1º semestre (241 variáveis) & 0,715 & 0,597 & 0,717 & -- & -- & --\\
+\multicolumn{7}{@{}l}{\emph{KNN, fim do 2º semestre}}\\
+\quad $k = 5$ (melhor da grade) & 0,607 & 0,513 & 0,556 & 0,591 & 0,506 & 0,514\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+No teste (Fig.~\ref{fig:teste}), \texttt{Dropout} teve recall de 0,704 e precisão de
+0,797; \texttt{Enrolled} foi a mais difícil (F1 de 0,447), confundida com
+\texttt{Dropout} (38) e \texttt{Graduate} (55). A árvore adotada tem 50 regras, com 5,7
+termos por regra em média.
+
+\begin{figure}[t]
 \centering
-% Gráfico de exemplo do template, refeito em vetor com pgfplots.
-% Para uma imagem, use: \includegraphics[width=\textwidth]{matriz_confusao.png}
-\begin{tikzpicture}
-\begin{axis}[
-  width=\textwidth, height=6cm,
-  xmin=0, xmax=30, ymin=0, ymax=50,
-  xtick={0,1,...,30}, ytick={0,5,...,50},
-  axis x line=bottom, axis y line=left, axis line style={-},
-  ticklabel style={font=\scriptsize},
-  legend pos=north west, legend cell align=left,
-  legend style={draw=none, font=\scriptsize, fill=none},
-]
-\addplot[black, dashed, line width=1pt] coordinates {
-  (0,0) (1,2) (2,1) (3,3) (4,4) (5,5) (6,7) (7,3) (8,5) (9,4) (10,8)
-  (11,10) (12,11) (13,13) (14,16) (15,15) (16,12) (17,18) (18,19) (19,21) (20,8)
-  (21,12) (22,11) (23,9) (24,13) (25,19) (26,26) (27,31) (28,32) (29,39) (30,45)};
-\addlegendentry{Data A}
-\addplot[color={rgb,255:red,192;green,80;blue,77}, line width=1pt] coordinates {
-  (0,16) (1,13) (2,14) (3,15) (4,17) (5,16.5) (6,18) (7,19.3) (8,12.4) (9,14.6) (10,16.5)
-  (11,15.3) (12,14) (13,14.7) (14,13.9) (15,12.2) (16,16.8) (17,17.1) (18,19.2) (19,18.25) (20,22)
-  (21,24) (22,25) (23,23.5) (24,21) (25,16.9) (26,17.5) (27,18.2) (28,19.1) (29,14.8) (30,15.2)};
-\addlegendentry{Data B}
-\end{axis}
-\end{tikzpicture}
-\caption{A figure caption is always placed below the illustration. Short
-captions are centered, while long ones are justified. The macro button
-chooses the correct format automatically.}\label{fig1}
+\begin{minipage}[c]{0.5\textwidth}
+\includegraphics[width=\textwidth]{matriz_confusao.png}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.48\textwidth}
+\centering\scriptsize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Classe & Precisão & Recall & F1 & Suporte\\
+\midrule
+Dropout & 0,797 & 0,704 & 0,748 & 284\\
+Enrolled & 0,485 & 0,415 & 0,447 & 159\\
+Graduate & 0,795 & 0,896 & 0,843 & 442\\
+\midrule
+Média macro & 0,692 & 0,672 & 0,679 & 885\\
+Acurácia & & & 0,748 & 885\\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\caption{Árvore adotada no teste: matriz de confusão e métricas por classe.}\label{fig:teste}
 \end{figure}
 
-For citations of references, we prefer the use of square brackets and
-consecutive numbers. Citations using labels or the author/year convention
-are also acceptable. The following bibliography provides a sample reference
-list with entries for journal articles~\cite{ref_article1}, an LNCS
-chapter~\cite{ref_lncs1}, a book~\cite{ref_book1}, proceedings without
-editors~\cite{ref_proc1}, as well as a URL~\cite{ref_url1}.
+Na simulação, o sistema gerou 251 alertas altos e 136 médios (498 alunos sem alerta).
+Dos alertas altos, 200 eram de alunos que evadiram, e 237 dos 284 que evadiram
+receberam algum alerta. Dos 20 primeiros da lista, 18 evadiram
+(Tabela~\ref{tab:alertas}). No 4º aluno, as mensalidades atrasadas levaram à sugestão de
+assistência estudantil, e as 2 ou 3 aprovações no 2º semestre, à de monitoria.
 
-\section{Literature Review}
+\begin{table}[t]
+\caption{Primeiras linhas da lista priorizada na simulação (todas com nível alto).}\label{tab:alertas}
+\centering\scriptsize
+\begin{tabularx}{\textwidth}{@{}ccccX@{}}
+\toprule
+Prioridade & Aluno & P(evasão) & Desfecho real & Ação sugerida\\
+\midrule
+1 & 723 & 1,00 & Dropout & oferecer monitoria/tutoria acadêmica\\
+2 & 482 & 1,00 & Dropout & oferecer monitoria/tutoria acadêmica\\
+3 & 2018 & 1,00 & Enrolled & oferecer monitoria/tutoria acadêmica\\
+4 & 4312 & 1,00 & Dropout & encaminhar à assistência estudantil (situação financeira);
+  oferecer monitoria/tutoria acadêmica\\
+\midrule
+\multicolumn{5}{@{}>{\raggedright\arraybackslash}p{\textwidth}@{}}{Motivo do 4º aluno:
+  \texttt{1,5 < Curricular units 2nd sem (approved)} $\le$ \texttt{3,5 e Curricular units
+  1st sem (enrolled) > 0,5 e Tuition fees up to date = 0 e GDP} $\le$ \texttt{1,765}}\\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-\section{Related works}
+\section{Discussão}
 
-\section{Methodology}
+\textbf{Agir cedo ou acertar mais.} O fim do 1º semestre já identifica uma fração de
+evasões semelhante à do fim do 2º (recall de 0,717 contra 0,701), um semestre antes; o
+ganho do 2º semestre está no F1 macro (de 0,597 para 0,667), na separação das outras
+classes. No ingresso (F1 macro de 0,490), os dados servem mais para triagem.
 
-\section{Results}
+\textbf{Enrolled e \texttt{class\_weight}.} \texttt{Enrolled} é a menor classe (17,9\%) e
+um estado intermediário, o que explica as confusões com as outras duas. O peso
+\texttt{balanced} não melhorou o recall de \texttt{Dropout} (0,683
+contra 0,701) e reduziu a acurácia (0,695 contra 0,747).
 
-\section{Discussion}
+\textbf{Árvore $\times$ KNN.} Além das métricas, a árvore favorece a solução sistêmica
+pela explicabilidade: o caminho do aluno justifica o alerta e orienta a ação, o que o
+KNN não oferece. O KNN pode ter sido prejudicado pelas 247 dimensões do \emph{one-hot}.
 
-\section{Conclusion}
+\textbf{Priorização.} Com capacidade de 20 atendimentos, 18 priorizados evadiram; entre
+os 100 primeiros, 97. As regras de ação, porém, ainda são simples: 384 dos 387 alertas
+incluem monitoria, e a ação ``conversa com a coordenação de curso'' não apareceu.
 
-\begin{credits}
-\subsubsection{\ackname} A third level heading in 9-point font size at the
-end of the paper is used for general acknowledgments, for example: This
-study was funded by X (grant number Y).
+\textbf{Limitações.} Os dados vêm de uma única instituição portuguesa, e variáveis como
+mensalidades e devedor não se aplicam a universidades públicas brasileiras. As
+probabilidades das folhas são grosseiras: 56 alunos de teste empatam com probabilidade
+de evasão 1,0, e a ordem entre eles é arbitrária. As intervenções alteram os rótulos
+futuros, o que exige cuidado no retreino, e o sistema é idealizado, não implantado.
 
-\subsubsection{\discintname} It is now necessary to declare any competing
-interests or to specifically state that the authors have no competing
-interests. Please place the statement with a third level heading in 9-point
-font size beneath the (optional) acknowledgments\footnote{If EquinOCS, our
-proceedings submission system, is used, then the disclaimer can be provided
-directly in the system.}, for example: The authors have no competing
-interests to declare that are relevant to the content of this article. Or:
-Author A has received research grants from Company W. Author B has received
-a speaker honorarium from Company X and owns stock in Company Y. Author C is
-a member of committee Z.
-\end{credits}
+\section{Conclusão}
+
+O objetivo era propor um sistema inteligente de apoio à decisão para a permanência
+estudantil. Ele foi atingido com a especificação do
+Sistema de Alerta Precoce de Evasão segundo Molina~\cite{molina2020}: o sistema observa
+os dados da IES a cada período, avalia e explica o risco de cada aluno, sugere e
+prioriza ações e aprende com os desfechos registrados.
+
+Na parte computacional, a árvore de profundidade 6 obteve no teste F1 macro de 0,679 e
+recall de 0,704 na classe evasão, superando o KNN, com regras que justificam cada
+alerta. O fim do 1º semestre já identifica a maior parte das evasões, e a lista
+priorizada concentra os alunos que de fato evadem (18 dos 20 primeiros). Os próximos
+passos são desempatar a priorização, refinar as regras de ação com a equipe e validar o
+sistema com dados de uma universidade brasileira.
+
 %
 % ---- Referências ----
-% Lista manual, numerada na ordem em que aparece (como no template Word).
-% Cite no texto com \cite{chave}. Exemplos no formato LNCS para o projeto:
-%
-% \bibitem{uci_dataset}
-% Realinho, V., Vieira Martins, M., Machado, J., Baptista, L.: Predict
-% Students' Dropout and Academic Success. UCI Machine Learning Repository
-% (2021). \doi{10.24432/C5MC89}
-%
-% \bibitem{realinho2022}
-% Realinho, V., Machado, J., Baptista, L., Martins, M.V.: Predicting Student
-% Dropout and Academic Success. Data \textbf{7}(11), 146 (2022).
-% \doi{10.3390/data7110146}
-%
-\begin{thebibliography}{8}
-\bibitem{ref_article1}
-Author, F.: Article title. Journal \textbf{2}(5), 99--110 (2016)
+% Lista manual, numerada na ordem em que aparece no texto (como no template Word).
+\begin{thebibliography}{5}
+\bibitem{molina2020}
+Molina, M.: What is an intelligent system? arXiv preprint arXiv:2009.09083 (2020)
 
-\bibitem{ref_lncs1}
-Author, F., Author, S.: Title of a proceedings paper. In: Editor, F.,
-Editor, S. (eds.) CONFERENCE 2016, LNCS, vol. 9999, pp. 1--13. Springer,
-Heidelberg (2016)
+\bibitem{realinho2022}
+Realinho, V., Machado, J., Baptista, L., Martins, M.V.: Predicting Student Dropout and
+Academic Success. Data \textbf{7}(11), 146 (2022). \doi{10.3390/data7110146}
 
-\bibitem{ref_book1}
-Author, F., Author, S., Author, T.: Book title. 2nd edn. Publisher,
-Location (1999)
+\bibitem{martins2021}
+Martins, M.V., Tolledo, D., Machado, J., Baptista, L.M.T., Realinho, V.: Early
+prediction of student's performance in higher education: a case study. In: Trends and
+Applications in Information Systems and Technologies. Springer (2021)
 
-\bibitem{ref_proc1}
-Author, F.: Contribution title. In: 9th International Proceedings on
-Proceedings, pp. 1--2. Publisher, Location (2010)
+\bibitem{uci_dataset}
+Realinho, V., Vieira Martins, M., Machado, J., Baptista, L.: Predict Students' Dropout
+and Academic Success. UCI Machine Learning Repository (2021). \doi{10.24432/C5MC89}
 
-\bibitem{ref_url1}
-LNCS Homepage, \url{http://www.springer.com/lncs}, last accessed 2023/10/25
+\bibitem{sklearn}
+Pedregosa, F., et al.: Scikit-learn: Machine Learning in Python. Journal of Machine
+Learning Research \textbf{12}, 2825--2830 (2011)
 \end{thebibliography}
+%
+\clearpage % apêndice fora da contagem de 6 páginas
+\appendix
+\section{Tabelas completas}\label{ap:tabelas}
+
+\begin{table}[ht]
+\caption{Validação cruzada (10 folds) no treino: grade completa da árvore e do KNN.}\label{tab:grade}
+\centering\footnotesize
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+Modelo & Parâmetros & Acurácia & F1 macro & Recall Dropout & Regras\\
+\midrule
+Árvore & None, 3 & 0,728 & 0,612 & 0,703 & 8,0\\
+Árvore & None, 4 & 0,737 & 0,660 & 0,662 & 16,0\\
+Árvore & None, 5 & 0,738 & 0,646 & 0,683 & 31,0\\
+Árvore & None, 6 & 0,747 & 0,667 & 0,701 & 51,4\\
+Árvore & None, 8 & 0,743 & 0,671 & 0,704 & 110,2\\
+Árvore & None, 10 & 0,727 & 0,657 & 0,713 & 180,0\\
+Árvore & None, sem limite & 0,697 & 0,633 & 0,715 & 342,0\\
+Árvore & balanced, 3 & 0,667 & 0,644 & 0,683 & 8,0\\
+Árvore & balanced, 4 & 0,680 & 0,657 & 0,656 & 16,0\\
+Árvore & balanced, 5 & 0,678 & 0,659 & 0,676 & 31,7\\
+Árvore & balanced, 6 & 0,695 & 0,669 & 0,683 & 54,7\\
+Árvore & balanced, 8 & 0,695 & 0,661 & 0,671 & 118,8\\
+Árvore & balanced, 10 & 0,694 & 0,653 & 0,688 & 192,5\\
+Árvore & balanced, sem limite & 0,664 & 0,615 & 0,702 & 365,6\\
+\midrule
+KNN & $k = 5$ & 0,607 & 0,513 & 0,556 & --\\
+KNN & $k = 11$ & 0,630 & 0,503 & 0,523 & --\\
+KNN & $k = 21$ & 0,625 & 0,473 & 0,482 & --\\
+KNN & $k = 31$ & 0,628 & 0,463 & 0,465 & --\\
+KNN & $k = 51$ & 0,630 & 0,452 & 0,457 & --\\
+\bottomrule
+\end{tabular}
+
+\smallskip
+\scriptsize Parâmetros da árvore: \texttt{class\_weight}, \texttt{max\_depth}.
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{importancia_features.png}
+\caption{As 10 variáveis mais importantes da árvore adotada.}\label{fig:importancia}
+\end{figure}
+
+\section{Código-fonte}
+
+\lstinputlisting[basicstyle=\ttfamily\scriptsize, caption={Código completo do experimento (\texttt{projeto.py}).}]{../projeto.py}
 %
 \end{document}

@@ -9,8 +9,11 @@ from pathlib import Path
 
 PASTA_ARTIGO = Path(__file__).resolve().parent / 'artigo'
 ARQUIVO_TEX = 'artigo.tex'
-INSTALAR_LATEX = ('sudo apt install -y latexmk texlive-latex-extra texlive-fonts-recommended '
-                  'texlive-pictures texlive-lang-portuguese')
+if sys.platform == 'win32':
+    INSTALAR_LATEX = 'TeX Live para Windows (já traz o latexmk): https://tug.org/texlive/'
+else:
+    INSTALAR_LATEX = ('sudo apt install -y latexmk texlive-latex-extra texlive-fonts-recommended '
+                      'texlive-pictures texlive-lang-portuguese')
 
 
 def gerar_pdf() -> Path:
